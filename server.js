@@ -1,8 +1,12 @@
 const express = require("express");
 const bodyParser = require("body-parser");
 const Sequelize = require("sequelize");
+//Todo:: password encription
 const bcrypt = require('bcrypt');
-
+// import passport and passport-jwt modules
+const jwt = require('jsonwebtoken');
+const passport = require('passport');
+const passportJWT = require('passport-jwt');
 
 const app = express();
 const port = 8000;
@@ -12,6 +16,38 @@ app.use(bodyParser.json());
 //parse application/x-www-form-urlencoded
 app.use(bodyParser.urlencoded({ extended: true }));
 //Make sure mamp is on and take conf from here http://localhost:8888/MAMP/?language=English
+
+
+
+////============================
+
+// ExtractJwt to help extract the token
+let ExtractJwt = passportJWT.ExtractJwt;
+// JwtStrategy which is the strategy for the authentication
+let JwtStrategy = passportJWT.Strategy;
+let jwtOptions = {};
+jwtOptions.jwtFromRequest = ExtractJwt.fromAuthHeaderAsBearerToken();
+jwtOptions.secretOrKey = 'wowwow';
+
+// lets create our strategy for web token
+let strategy = new JwtStrategy(jwtOptions, function(jwt_payload, next) {
+    console.log('payload received', jwt_payload);
+    let user = getUser({ id: jwt_payload.id });
+    if (user) {
+      next(null, user);
+    } else {
+      next(null, false);
+    }
+  });
+  // use the strategy
+  passport.use(strategy);
+
+  app.use(passport.initialize());
+
+//==============================================
+
+
+
 // initialize an instance of Sequelize
 const sequelize = new Sequelize({
     database: 'social_app',
@@ -57,11 +93,38 @@ const User = sequelize.define('user', {
     };
     
   
-    
+
+//DB connection
 app.get("/", function(req, res){
     res.json({ message: 'Express is up!' });
 });
 
+// protected route:: Check authorisation
+app.get('/protected', passport.authenticate('jwt', { session: false }), function(req, res) {
+    res.json({ msg: 'Congrats! You are seeing this because you are authorized'});
+});
+
+// login route
+app.post('/login', async function(req, res, next) { 
+    const { name, password } = req.body;
+    if (name && password) {
+      // we get the user with the name and save the resolved promise returned
+      let user = await getUser({ name });
+      if (!user) {
+        res.status(401).json({ msg: 'No such user found', user });
+      }
+     if (user.password === password) {
+        // from now on we’ll identify the user by the id and the id is
+         // the only personalized value that goes into our token
+        let payload = { id: user.id };
+        let token = jwt.sign(payload, jwtOptions.secretOrKey);
+        res.json({ msg: 'ok', token: token });
+      } else {
+        res.status(401).json({ msg: 'Password is incorrect' });
+      }
+    }
+  });
+  
 // get all users
 app.get('/users', function(req, res) {
     getAllUsers().then(user => res.json(user)); 
