@@ -1,6 +1,7 @@
 const express = require("express");
 const bodyParser = require("body-parser");
 const Sequelize = require("sequelize");
+const bcrypt = require('bcrypt');
 
 
 const app = express();
@@ -54,7 +55,7 @@ const User = sequelize.define('user', {
        where: obj,
         });
     };
-  
+    
   
     
 app.get("/", function(req, res){
