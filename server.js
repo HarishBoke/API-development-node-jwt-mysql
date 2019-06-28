@@ -126,11 +126,16 @@ app.post('/login', async function(req, res, next) {
   });
   
 // get all users
-app.get('/users', function(req, res) {
+//NOTE:: by adding passport.authenticate('jwt', { session: false }), and passing Authentication: Bearer token; as header will be secure request
+  app.get('/users', passport.authenticate('jwt', { session: false }), function(req, res) {
     getAllUsers().then(user => res.json(user)); 
   });
+  app.get('/user/:id', passport.authenticate('jwt', {session: false}), function(req, res){
+const {id} = req.body;
+        getUser(req.params.id).then(user => res.json(user));
+  });
   // register route
-  app.post('/register', function(req, res, next) {
+  app.post('/register', passport.authenticate('jwt', { session: false }), function(req, res, next) {
     const { name, password } = req.body;
     createUser({ name, password }).then(user =>
       res.json({ user, msg: 'account created successfully' })
